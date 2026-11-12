@@ -447,6 +447,27 @@ html[data-theme="dark"] .hero-reset { background: rgba(21, 27, 39, 0.85); }
 .gallery-cta-text small { font-size: 10.5px; color: var(--muted); }
 .gallery-cta-arrow { font-size: 22px; color: var(--faint); line-height: 1; padding-right: 2px; }
 
+.link.block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 0;
+  font-size: 11.5px;
+  color: var(--accent-ink);
+}
+
+.link.block .icon { width: 15px; height: 15px; }
+
+.import-note {
+  margin: 8px 0 0;
+  font-size: 10px;
+  line-height: 1.55;
+  color: var(--faint);
+}
+
 /* ---------------------------------------------------------- 结果 */
 .section-head {
   display: flex;

@@ -48,6 +48,10 @@ async function chooseFolder() {
         showToast("这个文件夹里没有图片");
         return;
       }
+      const confirmed = window.confirm(
+        `找到 ${files.length} 张图片，全部勾选并导入？\n\n照片只在本机建立索引，不会上传。`,
+      );
+      if (!confirmed) return;
       await importFiles(files);
       return;
     } catch (error) {
@@ -117,9 +121,13 @@ function nextFrame() {
 async function boot() {
   cacheDom();
   bindEvents();
-  if (typeof window.showDirectoryPicker === "function") {
-    dom.btnImportFolder.textContent = "导入整个相册文件夹";
-  }
+  const folderSupported = typeof window.showDirectoryPicker === "function";
+  dom.btnImportFolder.hidden = !folderSupported;
+  dom.btnSelectAllFolder.hidden = !folderSupported;
+  dom.folderNote.hidden = false;
+  dom.folderNote.textContent = folderSupported
+    ? "选择相册文件夹后，会自动勾选并导入其中全部图片"
+    : "当前浏览器不支持整目录全选；请在系统相册中多选照片";
   applyTheme(storedTheme());
   syncThresholdUI();
 
@@ -165,6 +173,8 @@ function cacheDom() {
     btnPick: $("#btnPick"),
     libraryHint: $("#libraryHint"),
     galleryCta: $("#galleryCta"),
+    btnSelectAllFolder: $("#btnSelectAllFolder"),
+    folderNote: $("#folderNote"),
     resultMeta: $("#resultMeta"),
     results: $("#results"),
     resultsEmpty: $("#resultsEmpty"),
@@ -223,6 +233,7 @@ function bindEvents() {
     else switchView("library");
   });
   dom.galleryCta.addEventListener("click", () => beginGalleryImport(true));
+  dom.btnSelectAllFolder.addEventListener("click", chooseFolder);
 
   dom.queryInput.addEventListener("change", () => {
     const file = dom.queryInput.files && dom.queryInput.files[0];

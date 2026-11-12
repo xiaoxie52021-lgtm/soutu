@@ -144,6 +144,9 @@
           </span>
           <span class="gallery-cta-arrow">›</span>
         </button>
+        <button class="link block select-all-link" id="btnSelectAllFolder" hidden>
+          <svg class="icon"><use href="#i-check"></use></svg>全选整个相册文件夹
+        </button>
 
         <div class="section-head">
           <h2>相似图片</h2>
@@ -186,7 +189,10 @@
           <button class="btn btn-primary block" id="btnImport">
             <svg class="icon"><use href="#i-image"></use></svg>从相册选择照片
           </button>
-          <button class="btn btn-link block" id="btnImportFolder">选择文件夹（部分浏览器）</button>
+          <button class="btn btn-soft block" id="btnImportFolder" hidden>
+            <svg class="icon"><use href="#i-check"></use></svg>一键全选并导入
+          </button>
+          <p class="import-note" id="folderNote" hidden></p>
         </div>
 
         <div class="list-head">
