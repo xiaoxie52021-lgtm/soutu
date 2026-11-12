@@ -1,6 +1,6 @@
-/* 图搜移动端 Service Worker：缓存静态资源，支持离线打开。 */
+﻿/* 图搜移动端 Service Worker：缓存静态资源，支持离线打开。 */
 
-const CACHE_NAME = "imageseek-mobile-v1.0.0";
+const CACHE_NAME = "imageseek-mobile-v1.0.1";
 const ASSETS = [
   "./",
   "./index.html",

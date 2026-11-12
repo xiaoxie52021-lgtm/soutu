@@ -27,6 +27,56 @@ const state = {
 };
 
 let toastTimer = null;
+let importFromHome = false;
+
+function beginGalleryImport(fromHome = false) {
+  if (state.importing) return;
+  importFromHome = Boolean(fromHome);
+  dom.importInput.click();
+}
+
+async function chooseFolder() {
+  if (state.importing) return;
+
+  if (typeof window.showDirectoryPicker === "function") {
+    try {
+      showToast("正在读取相册文件夹…");
+      const directory = await window.showDirectoryPicker({ mode: "read" });
+      const files = [];
+      await collectDirectory(directory, "", files);
+      if (!files.length) {
+        showToast("这个文件夹里没有图片");
+        return;
+      }
+      await importFiles(files);
+      return;
+    } catch (error) {
+      if (error && error.name === "AbortError") return;
+      console.warn("目录选择失败，改用文件夹上传", error);
+    }
+  }
+  dom.folderInput.click();
+}
+
+async function collectDirectory(handle, prefix, files) {
+  for await (const [name, entry] of handle.entries()) {
+    if (entry.kind === "directory") {
+      await collectDirectory(entry, prefix ? `${prefix}/${name}` : name, files);
+      continue;
+    }
+    if (entry.kind !== "file") continue;
+    if (!/\.(jpe?g|png|webp|gif|bmp|tiff?|avif|heic|heif)$/i.test(name)) continue;
+    const file = await entry.getFile();
+    if (!isImageFile(file)) continue;
+    const relativeName = prefix ? `${prefix}/${name}` : name;
+    files.push(
+      new File([file], relativeName, {
+        type: file.type,
+        lastModified: file.lastModified,
+      }),
+    );
+  }
+}
 
 const dom = {};
 
@@ -67,6 +117,9 @@ function nextFrame() {
 async function boot() {
   cacheDom();
   bindEvents();
+  if (typeof window.showDirectoryPicker === "function") {
+    dom.btnImportFolder.textContent = "导入整个相册文件夹";
+  }
   applyTheme(storedTheme());
   syncThresholdUI();
 
@@ -111,6 +164,7 @@ function cacheDom() {
     btnCamera: $("#btnCamera"),
     btnPick: $("#btnPick"),
     libraryHint: $("#libraryHint"),
+    galleryCta: $("#galleryCta"),
     resultMeta: $("#resultMeta"),
     results: $("#results"),
     resultsEmpty: $("#resultsEmpty"),
@@ -164,7 +218,11 @@ function bindEvents() {
   dom.btnCamera.addEventListener("click", () => dom.cameraInput.click());
   dom.btnPick.addEventListener("click", () => dom.queryInput.click());
   dom.resetQuery.addEventListener("click", resetQuery);
-  dom.libraryHint.addEventListener("click", () => switchView("library"));
+  dom.libraryHint.addEventListener("click", () => {
+    if (!state.photos.length) beginGalleryImport(true);
+    else switchView("library");
+  });
+  dom.galleryCta.addEventListener("click", () => beginGalleryImport(true));
 
   dom.queryInput.addEventListener("change", () => {
     const file = dom.queryInput.files && dom.queryInput.files[0];
@@ -179,7 +237,9 @@ function bindEvents() {
   dom.importInput.addEventListener("change", () => {
     const files = Array.from(dom.importInput.files || []);
     dom.importInput.value = "";
-    if (files.length) importFiles(files);
+    const fromHome = importFromHome;
+    importFromHome = false;
+    if (files.length) importFiles(files, { fromHome });
   });
   dom.folderInput.addEventListener("change", () => {
     const files = Array.from(dom.folderInput.files || []);
@@ -187,8 +247,8 @@ function bindEvents() {
     if (files.length) importFiles(files);
   });
 
-  dom.btnImport.addEventListener("click", () => dom.importInput.click());
-  dom.btnImportFolder.addEventListener("click", () => dom.folderInput.click());
+  dom.btnImport.addEventListener("click", () => beginGalleryImport(false));
+  dom.btnImportFolder.addEventListener("click", chooseFolder);
   dom.btnClear.addEventListener("click", clearLibrary);
   dom.btnClearSettings.addEventListener("click", clearLibrary);
   dom.btnPersist.addEventListener("click", requestPersistence);
@@ -264,13 +324,14 @@ async function updateLibraryUI() {
   dom.tabCount.textContent = count > 99 ? "99+" : String(count);
   dom.tabCount.hidden = count === 0;
   dom.libraryEmpty.hidden = count > 0;
+  dom.galleryCta.hidden = count > 0;
 
   if (count === 0) {
-    dom.libraryHint.textContent = "图库还是空的，先导入照片";
-    dom.libraryHint.classList.add("action");
+    dom.libraryHint.textContent = "照片只在本机处理，不会上传";
+    dom.libraryHint.classList.remove("action");
   } else {
     dom.libraryHint.textContent = `${count} 张照片已就绪 · 点击管理图库`;
-    dom.libraryHint.classList.remove("action");
+    dom.libraryHint.classList.add("action");
   }
 
   const estimate = await db.storageEstimate();
@@ -462,6 +523,9 @@ async function importFiles(fileList, options = {}) {
       if (failed) parts.push(`${failed} 张失败`);
       showToast(parts.join("，"));
     }
+  }
+  if (options.fromHome && added > 0 && !state.query) {
+    switchView("library");
   }
   return { added, skipped, failed };
 }
@@ -666,9 +730,9 @@ function showResultsEmpty(kind) {
     "no-library": {
       icon: "i-image",
       title: "图库还是空的",
-      text: "先导入一些照片，就能开始以图搜图了",
+      text: "点下面按钮打开手机相册，选择照片建立本地索引",
       action: "import",
-      label: "去导入照片",
+      label: "一键导入手机相册",
     },
     "no-match": {
       icon: "i-search",
@@ -691,7 +755,7 @@ function showResultsEmpty(kind) {
     const button = dom.resultsEmpty.querySelector("button");
     button.textContent = content.label;
     button.addEventListener("click", () => {
-      if (content.action === "import") dom.importInput.click();
+      if (content.action === "import") beginGalleryImport(true);
       else switchView("settings");
     });
   }
