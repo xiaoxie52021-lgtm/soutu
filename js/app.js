@@ -121,13 +121,22 @@ function nextFrame() {
 async function boot() {
   cacheDom();
   bindEvents();
-  const folderSupported = typeof window.showDirectoryPicker === "function";
-  dom.btnImportFolder.hidden = !folderSupported;
-  dom.btnSelectAllFolder.hidden = !folderSupported;
+  const isIOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const directoryApi = typeof window.showDirectoryPicker === "function";
+  const folderInputSupported = "webkitdirectory" in document.createElement("input");
+  const folderCapable = !isIOS && (directoryApi || folderInputSupported);
+  dom.btnImportFolder.hidden = !folderCapable;
+  dom.btnSelectAllFolder.hidden = !folderCapable;
   dom.folderNote.hidden = false;
-  dom.folderNote.textContent = folderSupported
-    ? "选择相册文件夹后，会自动勾选并导入其中全部图片"
-    : "当前浏览器不支持整目录全选；请在系统相册中多选照片";
+  if (!folderCapable) {
+    dom.folderNote.textContent = "iOS 不支持整目录选择，请在系统相册中多选照片";
+  } else if (directoryApi) {
+    dom.folderNote.textContent = "选择相册文件夹后，会自动勾选并导入其中全部图片";
+  } else {
+    dom.folderNote.textContent = "选择相册文件夹后导入其中全部图片（取决于浏览器支持）";
+  }
   applyTheme(storedTheme());
   syncThresholdUI();
 
